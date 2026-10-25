@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chess Training Assistant</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 380px;
+      min-height: 500px;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+    }
+    .header {
+      background: linear-gradient(135deg, #16213e, #0f3460);
+      padding: 12px 16px;
+      border-bottom: 1px solid #2a2a4a;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-icon { font-size: 24px; }
+    .header h1 { font-size: 15px; font-weight: 600; color: #fff; }
+    .header p { font-size: 11px; color: #888; }
+    .section {
+      padding: 12px 16px;
+      border-bottom: 1px solid #2a2a4a;
+    }
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #4ade80;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .control-label { font-size: 12px; color: #ccc; }
+    .control-value {
+      background: #2a2a4a;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #fff;
+      min-width: 60px;
+      text-align: center;
+    }
+    select, input[type="number"], input[type="range"] {
+      background: #2a2a4a;
+      border: 1px solid #3a3a5a;
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    select { min-width: 100px; }
+    .toggle {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      background: #3a3a5a;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle.active { background: #4ade80; }
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle.active::after { transform: translateX(16px); }
+    .btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: none;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: #4ade80; color: #1a1a2e; }
+    .btn-primary:hover { background: #22c55e; }
+    .btn-secondary { background: #2a2a4a; color: #e0e0e0; border: 1px solid #3a3a5a; }
+    .btn-secondary:hover { background: #3a3a5a; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: #2a2a4a;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #666;
+    }
+    .status-dot.ready { background: #4ade80; }
+    .status-dot.analyzing { background: #f59e0b; animation: pulse 1s infinite; }
+    .status-dot.error { background: #ef4444; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .eval-display {
+      text-align: center;
+      padding: 8px;
+      background: #2a2a4a;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .eval-value { font-size: 20px; font-weight: bold; color: #fff; }
+    .eval-label { font-size: 10px; color: #888; margin-top: 2px; }
+    .button-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .button-row .btn { flex: 1; }
+    .accuracy-bar {
+      height: 6px;
+      background: #2a2a4a;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .accuracy-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4ade80, #22c55e);
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
+    .preset-btn {
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid #3a3a5a;
+      background: transparent;
+      color: #ccc;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .preset-btn.active { background: #4ade80; color: #1a1a2e; border-color: #4ade80; }
+    .preset-btn:hover { border-color: #4ade80; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span class="header-icon">♟️</span>
+    <div>
+      <h1>Chess Training Assistant</h1>
+      <p>Stockfish-powered analysis</p>
+    </div>
+  </div>
+
+  <!-- Engine Status -->
+  <div class="section">
+    <div class="section-title">Engine Status</div>
+    <div class="status-bar">
+      <div class="status-dot ready" id="engine-status-dot"></div>
+      <span id="engine-status-text">Ready</span>
+    </div>
+    <div class="eval-display">
+      <div class="eval-value" id="eval-value">+0.00</div>
+      <div class="eval-label" id="eval-label">Depth: -- | Nodes: --</div>
+    </div>
+  </div>
+
+  <!-- Play Strength -->
+  <div class="section">
+    <div class="section-title">Play Strength</div>
+    <div class="control-row">
+      <span class="control-label">Target Elo</span>
+      <select id="elo-select">
+        <option value="max">Maximum (3000+)</option>
+        <option value="2500">2500 - GM</option>
+        <option value="2200">2200 - Expert</option>
+        <option value="2000" selected>2000 - Advanced</option>
+        <option value="1800">1800 - Strong Club</option>
+        <option value="1600">1600 - Club</option>
+        <option value="1400">1400 - Intermediate</option>
+        <option value="1200">1200 - Casual</option>
+        <option value="1000">1000 - Beginner</option>
+        <option value="800">800 - Novice</option>
+        <option value="400">400 - Very Beginner</option>
+      </select>
+    </div>
+    <div class="control-row">
+      <span class="control-label">Candidates (Top N)</span>
+      <select id="candidates-select">
+        <option value="1">Top 1 (Best move)</option>
+        <option value="2">Top 2</option>
+        <option value="3" selected>Top 3 ★</option>
+        <option value="5">Top 5</option>
+        <option value="10">Top 10</option>
+        <option value="20">Top 20</option>
+      </select>
+    </div>
+    <div class="control-row">
+      <span class="control-label">Selection Mode</span>
+      <select id="selection-mode">
+        <option value="deterministic">Deterministic (Best)</option>
+        <option value="weighted" selected>Weighted ★</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Timing -->
+  <div class="section">
+    <div class="section-title">Move Timing</div>
+    <div class="control-row">
+      <span class="control-label">Min Time (s)</span>
+      <input type="number" id="min-time" value="1.0" min="0.1" max="30" step="0.1" style="width:60px">
+    </div>
+    <div class="control-row">
+      <span class="control-label">Max Time (s)</span>
+      <input type="number" id="max-time" value="6.0" min="0.5" max="60" step="0.1" style="width:60px">
+    </div>
+    <div class="control-row">
+      <span class="control-label">Variation (%)</span>
+      <input type="range" id="variation" min="0" max="100" value="20" style="width:100px">
+      <span id="variation-val" class="control-value">20%</span>
+    </div>
+  </div>
+
+  <!-- Randomization -->
+  <div class="section">
+    <div class="section-title">Human-Like Play</div>
+    <div class="control-row">
+      <span class="control-label">Enable Randomization</span>
+      <div class="toggle" id="randomization-toggle"></div>
+    </div>
+    <div class="control-row">
+      <span class="control-label">Target Accuracy</span>
+      <input type="number" id="target-accuracy" value="80" min="30" max="100" step="1" style="width:60px">
+      <span style="color:#888">%</span>
+    </div>
+    <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
+      <button class="preset-btn" data-preset="consistent">Consistent</button>
+      <button class="preset-btn active" data-preset="balanced">Balanced ★</button>
+      <button class="preset-btn" data-preset="variable">Variable</button>
+    </div>
+  </div>
+
+  <!-- Auto Play -->
+  <div class="section">
+    <div class="section-title">Auto Play</div>
+    <div class="control-row">
+      <span class="control-label">Auto Move</span>
+      <div class="toggle" id="autoplay-toggle"></div>
+    </div>
+    <div class="control-row">
+      <span class="control-label">Auto Next Game</span>
+      <div class="toggle" id="autonext-toggle"></div>
+    </div>
+    <div class="button-row">
+      <button class="btn btn-primary" id="btn-start">▶ Start</button>
+      <button class="btn btn-secondary" id="btn-pause">⏸ Pause</button>
+      <button class="btn btn-danger" id="btn-stop">⏹ Stop</button>
+    </div>
+  </div>
+
+  <!-- Display Options -->
+  <div class="section">
+    <div class="section-title">Display</div>
+    <div class="control-row">
+      <span class="control-label">Eval Bar</span>
+      <div class="toggle active" id="toggle-evalbar"></div>
+    </div>
+    <div class="control-row">
+      <span class="control-label">Hanging Pieces</span>
+      <div class="toggle active" id="toggle-hanging"></div>
+    </div>
+    <div class="control-row">
+      <span class="control-label">Opening Book</span>
+      <div class="toggle active" id="toggle-opening"></div>
+    </div>
+    <div class="control-row">
+      <span class="control-label">Opponent Stats</span>
+      <div class="toggle active" id="toggle-stats"></div>
+    </div>
+  </div>
+
+  <script src="dist/popup.js"></script>
+</body>
+</html>
