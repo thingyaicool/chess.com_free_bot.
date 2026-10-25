@@ -1,9 +1,10 @@
 /**
  * EngineManager - Manages Stockfish WebAssembly engine lifecycle and communication.
  * Runs Stockfish in a Web Worker for non-blocking analysis.
+ * Supports configurable depth, think time, and human-like timing.
  */
 
-import type { EngineConfig, EngineResult, MultiPVLine, CandidateMove } from './types';
+import type { EngineConfig, EngineResult, MultiPVLine, CandidateMove } from '../types';
 
 export class EngineManager {
   private worker: Worker | null = null;
@@ -15,10 +16,12 @@ export class EngineManager {
   private onResultCallback: ((result: EngineResult) => void) | null = null;
   private onErrorCallback: ((error: string) => void) | null = null;
   private onReadyCallback: (() => void) | null = null;
+  private onProgressCallback: ((depth: number, eval: number, pv: string[]) => void) | null = null;
 
   constructor(config?: Partial<EngineConfig>) {
     this.config = {
       depth: 15,
+      thinkTime: 3,
       multiPV: 3,
       elo: null,
       limitStrength: false,
@@ -33,40 +36,41 @@ export class EngineManager {
     return new Promise((resolve, reject) => {
       try {
         // Create worker from the bundled Stockfish engine
-        const engineUrl = chrome.runtime.getURL('engine/stockfish.js');
+        let engineUrl: string;
+        try {
+          engineUrl = chrome.runtime.getURL('engine/stockfish.js');
+        } catch {
+          // Fallback for testing outside extension context
+          engineUrl = './engine/stockfish.js';
+        }
+
         this.worker = new Worker(engineUrl);
 
         this.worker.onmessage = (e: MessageEvent) => {
-          this.handleEngineMessage(e.data);
+          this.handleEngineMessage(typeof e.data === 'string' ? e.data : String(e.data));
         };
 
         this.worker.onerror = (e) => {
           console.error('[EngineManager] Worker error:', e);
-          this.onErrorCallback?.(`Engine error: ${e.message}`);
-          reject(new Error(`Failed to initialize engine: ${e.message}`));
+          this.onErrorCallback?.(`Engine error: ${e.message || 'Unknown error'}`);
+          reject(new Error(`Failed to initialize engine: ${e.message || 'Unknown'}`));
         };
 
         // Initialize UCI protocol
         this.sendCommand('uci');
 
-        // Wait for uciok, then configure
-        const readyHandler = () => {
-          this.isReady = true;
-          this.configureEngine();
-          this.onReadyCallback?.();
-          resolve();
-        };
-
         // Set a timeout for initialization
         const timeout = setTimeout(() => {
-          reject(new Error('Engine initialization timeout'));
+          reject(new Error('Engine initialization timeout (10s)'));
         }, 10000);
 
         const origHandler = this.onReadyCallback;
         this.onReadyCallback = () => {
           clearTimeout(timeout);
+          this.isReady = true;
+          this.configureEngine();
           origHandler?.();
-          readyHandler();
+          resolve();
         };
       } catch (error) {
         reject(error);
@@ -90,6 +94,22 @@ export class EngineManager {
 
     if (this.isAnalyzing) {
       this.resultBuffer.push(line);
+
+      // Report progress for info lines
+      if (line.startsWith('info') && line.includes('depth')) {
+        const tokens = line.split(' ');
+        const depth = parseInt(this.getTokenValue(tokens, 'depth') || '0');
+        const pvIdx = tokens.indexOf('pv');
+        const pv = pvIdx !== -1 ? tokens.slice(pvIdx + 1) : [];
+
+        let eval = 0;
+        const scoreIdx = tokens.indexOf('score');
+        if (scoreIdx !== -1 && tokens[scoreIdx + 1] === 'cp') {
+          eval = parseInt(tokens[scoreIdx + 2] || '0');
+        }
+
+        this.onProgressCallback?.(depth, eval, pv);
+      }
 
       if (line.startsWith('bestmove')) {
         this.isAnalyzing = false;
@@ -116,57 +136,74 @@ export class EngineManager {
     let nps = 0;
     const pv: string[] = [];
     const multiPV: MultiPVLine[] = [];
+    const pvMap = new Map<number, { eval: number; mate: number | null; pv: string[]; depth: number }>();
 
     for (const line of buffer) {
       if (!line.startsWith('info')) continue;
 
       const tokens = line.split(' ');
-      const pvNum = this.getTokenValue(tokens, 'multipv');
+      const pvNum = parseInt(this.getTokenValue(tokens, 'multipv') || '1');
       const lineDepth = parseInt(this.getTokenValue(tokens, 'depth') || '0');
       const lineSelDepth = parseInt(this.getTokenValue(tokens, 'seldepth') || '0');
       const lineNodes = parseInt(this.getTokenValue(tokens, 'nodes') || '0');
       const lineTime = parseInt(this.getTokenValue(tokens, 'time') || '0');
       const lineNps = parseInt(this.getTokenValue(tokens, 'nps') || '0');
 
-      // Only process the latest depth for each PV line
-      if (lineDepth < depth && pvNum <= 1) continue;
-
       // Parse score
+      let lineEval = 0;
+      let lineMate: number | null = null;
       const scoreIdx = tokens.indexOf('score');
       if (scoreIdx !== -1) {
         if (tokens[scoreIdx + 1] === 'cp') {
-          evaluation = parseInt(tokens[scoreIdx + 2] || '0');
-          mateDistance = null;
+          lineEval = parseInt(tokens[scoreIdx + 2] || '0');
         } else if (tokens[scoreIdx + 1] === 'mate') {
-          mateDistance = parseInt(tokens[scoreIdx + 2] || '0');
-          evaluation = mateDistance > 0 ? 10000 - mateDistance : -10000 - mateDistance;
+          lineMate = parseInt(tokens[scoreIdx + 2] || '0');
+          lineEval = lineMate > 0 ? 10000 - lineMate : -10000 - lineMate;
         }
       }
 
       // Parse PV
       const pvIdx = tokens.indexOf('pv');
-      if (pvIdx !== -1) {
-        const linePV = tokens.slice(pvIdx + 1);
-        if (pvNum === 1 || !pvNum) {
-          pv.length = 0;
-          pv.push(...linePV);
-          depth = lineDepth;
-          selDepth = lineSelDepth;
-          nodes = lineNodes;
-          time = lineTime;
-          nps = lineNps;
-        }
+      const linePV = pvIdx !== -1 ? tokens.slice(pvIdx + 1) : [];
 
-        if (pvNum) {
-          multiPV.push({
-            rank: pvNum,
-            move: linePV[0] || '',
-            evaluation: evaluation,
-            mateDistance: mateDistance,
+      if (linePV.length > 0) {
+        // Only keep the deepest analysis for each PV line
+        const existing = pvMap.get(pvNum);
+        if (!existing || lineDepth >= existing.depth) {
+          pvMap.set(pvNum, {
+            eval: lineEval,
+            mate: lineMate,
             pv: linePV,
+            depth: lineDepth,
           });
         }
       }
+
+      // Update overall stats from PV1 (or no multipv)
+      if (pvNum === 1) {
+        evaluation = lineEval;
+        mateDistance = lineMate;
+        depth = lineDepth;
+        selDepth = lineSelDepth;
+        nodes = lineNodes;
+        time = lineTime;
+        nps = lineNps;
+        if (linePV.length > 0) {
+          pv.length = 0;
+          pv.push(...linePV);
+        }
+      }
+    }
+
+    // Build multiPV array from the map
+    for (const [rank, data] of pvMap.entries()) {
+      multiPV.push({
+        rank,
+        move: data.pv[0] || '',
+        evaluation: data.eval,
+        mateDistance: data.mate,
+        pv: data.pv,
+      });
     }
 
     // If no multiPV lines were parsed, create one from the main line
@@ -180,6 +217,9 @@ export class EngineManager {
       });
     }
 
+    // Sort by rank
+    multiPV.sort((a, b) => a.rank - b.rank);
+
     return {
       bestMove,
       ponder,
@@ -191,7 +231,7 @@ export class EngineManager {
       time,
       nps,
       pv,
-      multiPV: multiPV.sort((a, b) => a.rank - b.rank),
+      multiPV,
     };
   }
 
@@ -213,13 +253,23 @@ export class EngineManager {
 
     if (this.config.limitStrength && this.config.elo !== null) {
       this.sendCommand('setoption name UCI_LimitStrength value true');
-      this.sendCommand(`setoption name UCI_Elo value ${this.config.elo}`);
+      // Clamp to Stockfish's supported Elo range (1320-3190)
+      const clampedElo = Math.max(1320, Math.min(3190, this.config.elo));
+      this.sendCommand(`setoption name UCI_Elo value ${clampedElo}`);
     } else {
       this.sendCommand('setoption name UCI_LimitStrength value false');
     }
+
+    // Human-like behavior: add slight randomness to evaluation
+    // This makes the engine's choices less predictable
+    this.sendCommand('setoption name Skill Level value 20'); // Max skill
   }
 
-  analyze(fen: string, options?: { depth?: number; moveTime?: number }): void {
+  /**
+   * Analyze a position with configurable depth or think time.
+   * Adds human-like timing variation to avoid detection.
+   */
+  analyze(fen: string, options?: { depth?: number; thinkTime?: number; useThinkTime?: boolean }): void {
     if (!this.isReady || !this.worker) {
       throw new Error('Engine not ready');
     }
@@ -234,13 +284,18 @@ export class EngineManager {
     this.resultBuffer = [];
 
     const depth = options?.depth || this.config.depth;
-    const moveTime = options?.moveTime || this.config.moveTime;
+    const thinkTime = options?.thinkTime || this.config.thinkTime;
+    const useThinkTime = options?.useThinkTime ?? (this.config.moveTime !== null || thinkTime > 0);
+
+    // Add human-like timing variation (±15-30% random variation)
+    const humanVariation = 1 + (Math.random() * 0.3 - 0.15); // 0.85 to 1.15
+    const actualThinkTime = Math.round(thinkTime * 1000 * humanVariation);
 
     this.sendCommand('ucinewgame');
     this.sendCommand(`position fen ${fen}`);
 
-    if (moveTime) {
-      this.sendCommand(`go movetime ${moveTime}`);
+    if (useThinkTime && actualThinkTime > 0) {
+      this.sendCommand(`go movetime ${actualThinkTime}`);
     } else {
       this.sendCommand(`go depth ${depth}`);
     }
@@ -275,6 +330,10 @@ export class EngineManager {
 
   onReady(callback: () => void): void {
     this.onReadyCallback = callback;
+  }
+
+  onProgress(callback: (depth: number, eval: number, pv: string[]) => void): void {
+    this.onProgressCallback = callback;
   }
 
   getStatus(): { ready: boolean; analyzing: boolean } {

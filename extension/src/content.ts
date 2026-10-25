@@ -1,6 +1,7 @@
 /**
  * Content Script - Injected into chess.com pages.
  * Handles board state reading, overlay rendering, and communication with background.
+ * Designed to be resilient to DOM changes.
  */
 
 import { BoardAdapter } from './services/BoardAdapter';
@@ -16,6 +17,9 @@ class ChessTrainingContent {
   private hangingPieces: HangingPiece[] = [];
   private overlayContainer: HTMLElement | null = null;
   private evalBar: HTMLElement | null = null;
+  private settings: any = {};
+  private analysisDebounce: ReturnType<typeof setTimeout> | null = null;
+  private lastFenAnalyzed: string = '';
 
   constructor() {
     this.boardAdapter = new BoardAdapter();
@@ -24,7 +28,10 @@ class ChessTrainingContent {
   }
 
   initialize(): void {
-    console.log('[Content] Chess Training Assistant loaded');
+    console.log('[CTA] Chess Training Assistant content script loaded');
+
+    // Load settings
+    this.loadSettings();
 
     // Create overlay container
     this.createOverlayContainer();
@@ -32,7 +39,11 @@ class ChessTrainingContent {
     // Set up board observation
     this.boardAdapter.setPositionChangeCallback((state) => this.onPositionChange(state));
     this.boardAdapter.setGameOverCallback((result) => this.onGameOver(result));
-    this.boardAdapter.startObserving();
+
+    // Start observing with a delay to let the page load
+    setTimeout(() => {
+      this.boardAdapter.startObserving();
+    }, 2000);
 
     // Listen for messages from background
     chrome.runtime.onMessage.addListener((message: ExtensionMessage) => {
@@ -41,10 +52,27 @@ class ChessTrainingContent {
 
     // Create UI elements
     this.createEvalBar();
-    this.createHangingPieceOverlay();
+
+    // Listen for settings changes
+    if (chrome.storage?.onChanged) {
+      chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName === 'sync' && changes['chess-training-assistant-settings']) {
+          this.settings = changes['chess-training-assistant-settings'].newValue || {};
+        }
+      });
+    }
+  }
+
+  private loadSettings(): void {
+    chrome.storage?.sync?.get('chess-training-assistant-settings', (result) => {
+      this.settings = result['chess-training-assistant-settings'] || {};
+    });
   }
 
   private createOverlayContainer(): void {
+    // Avoid duplicate containers
+    if (document.getElementById('chess-training-overlay')) return;
+
     this.overlayContainer = document.createElement('div');
     this.overlayContainer.id = 'chess-training-overlay';
     this.overlayContainer.style.cssText = `
@@ -62,43 +90,37 @@ class ChessTrainingContent {
   private createEvalBar(): void {
     if (!this.overlayContainer) return;
 
+    // Avoid duplicates
+    if (document.getElementById('cta-eval-bar')) return;
+
     this.evalBar = document.createElement('div');
     this.evalBar.id = 'cta-eval-bar';
     this.evalBar.style.cssText = `
-      position: absolute;
-      right: -35px;
-      top: 0;
-      width: 28px;
-      height: 100%;
-      background: #333;
+      position: fixed;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 24px;
+      height: 300px;
+      background: #302e2b;
       border-radius: 4px;
       overflow: hidden;
       pointer-events: auto;
       display: flex;
       flex-direction: column-reverse;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      z-index: 100000;
     `;
 
-    // White portion (bottom)
     const whitePortion = document.createElement('div');
     whitePortion.id = 'cta-eval-white';
     whitePortion.style.cssText = `
       width: 100%;
       height: 50%;
-      background: #f0f0f0;
+      background: #eeeed2;
       transition: height 0.3s ease;
     `;
 
-    // Black portion (top)
-    const blackPortion = document.createElement('div');
-    blackPortion.id = 'cta-eval-black';
-    blackPortion.style.cssText = `
-      width: 100%;
-      flex: 1;
-      background: #333;
-      transition: height 0.3s ease;
-    `;
-
-    // Eval text
     const evalText = document.createElement('div');
     evalText.id = 'cta-eval-text';
     evalText.style.cssText = `
@@ -108,54 +130,80 @@ class ChessTrainingContent {
       transform: translate(-50%, -50%);
       font-size: 10px;
       font-weight: bold;
-      color: #666;
-      text-shadow: 0 0 2px white;
+      font-family: monospace;
+      color: #888;
       white-space: nowrap;
     `;
     evalText.textContent = '0.0';
 
-    this.evalBar.appendChild(blackPortion);
     this.evalBar.appendChild(whitePortion);
     this.evalBar.appendChild(evalText);
     this.overlayContainer.appendChild(this.evalBar);
   }
 
-  private createHangingPieceOverlay(): void {
-    // Hanging piece highlights are added dynamically
-  }
-
   private onPositionChange(state: GameState): void {
-    // Request analysis from background
-    chrome.runtime.sendMessage({
-      type: 'ANALYZE',
-      payload: {
-        fen: state.fen,
-      },
-    });
+    // Debounce analysis requests
+    if (this.analysisDebounce) {
+      clearTimeout(this.analysisDebounce);
+    }
+
+    this.analysisDebounce = setTimeout(() => {
+      this.requestAnalysis(state);
+    }, 200);
 
     // Detect hanging pieces
-    const chess = this.boardAdapter.getChessInstance();
-    this.hangingPieces = this.hangingPieceDetector.detectHangingPieces(chess);
-    this.updateHangingPieceHighlights();
+    try {
+      const chess = this.boardAdapter.getChessInstance();
+      this.hangingPieces = this.hangingPieceDetector.detectHangingPieces(chess);
+      this.updateHangingPieceHighlights();
+    } catch (e) {
+      // Ignore chess.js errors
+    }
 
     // Check opening book
-    const moveNumber = Math.floor(state.moveHistory.length / 2) + 1;
-    const openingRec = this.openingBook.getRecommendation(chess, moveNumber);
-    if (openingRec) {
-      this.updateOpeningDisplay(openingRec);
+    try {
+      const chess = this.boardAdapter.getChessInstance();
+      const moveNumber = Math.floor(state.moveHistory.length / 2) + 1;
+      const openingRec = this.openingBook.getRecommendation(chess, moveNumber);
+      if (openingRec) {
+        this.sendToBackground({
+          type: 'POSITION_UPDATE',
+          payload: { opening: openingRec },
+        });
+      }
+    } catch (e) {
+      // Ignore
     }
 
     // Forward position to background for opponent stats
     if (state.opponentUsername) {
-      chrome.runtime.sendMessage({
+      this.sendToBackground({
         type: 'GET_OPPONENT_STATS',
         payload: { username: state.opponentUsername },
       });
     }
   }
 
-  private onGameOver(result: { winner: 'white' | 'black' | 'draw' | null }): void {
-    console.log('[Content] Game over:', result);
+  private requestAnalysis(state: GameState): void {
+    if (state.fen === this.lastFenAnalyzed) return;
+    this.lastFenAnalyzed = state.fen;
+
+    const thinkTime = this.settings?.engine?.thinkTime || 3;
+    const depth = this.settings?.engine?.depth || 15;
+
+    this.sendToBackground({
+      type: 'ANALYZE',
+      payload: {
+        fen: state.fen,
+        thinkTime,
+        depth,
+        useThinkTime: true,
+      },
+    });
+  }
+
+  private onGameOver(_result: { winner: 'white' | 'black' | 'draw' | null }): void {
+    console.log('[CTA] Game over');
     this.clearHighlights();
   }
 
@@ -167,18 +215,19 @@ class ChessTrainingContent {
         break;
 
       case 'ENGINE_ERROR':
-        console.error('[Content] Engine error:', message.payload?.error);
+        console.error('[CTA] Engine error:', message.payload?.error);
         break;
 
       case 'OPPONENT_STATS_RESULT':
-        this.updateOpponentDisplay(message.payload);
+        this.sendToBackground({
+          type: 'POSITION_UPDATE',
+          payload: { opponentStats: message.payload },
+        });
         break;
     }
   }
 
   private updateEvalBar(result: EngineResult): void {
-    if (!this.evalBar) return;
-
     const whitePortion = document.getElementById('cta-eval-white');
     const evalText = document.getElementById('cta-eval-text');
 
@@ -188,97 +237,72 @@ class ChessTrainingContent {
     let displayText: string;
 
     if (result.mateDistance !== null) {
-      // Mate score
       if (result.mateDistance > 0) {
-        percentage = 95; // White mating
+        percentage = 95;
         displayText = `M${result.mateDistance}`;
       } else {
-        percentage = 5; // Black mating
+        percentage = 5;
         displayText = `M${Math.abs(result.mateDistance)}`;
       }
     } else {
-      // Centipawn score - convert to percentage using sigmoid-like function
       const cp = result.evaluation;
       percentage = 50 + (50 * (2 / (1 + Math.exp(-cp / 200)) - 1));
       percentage = Math.max(2, Math.min(98, percentage));
-
       const absCp = Math.abs(cp / 100);
       displayText = cp >= 0 ? `+${absCp.toFixed(1)}` : `-${absCp.toFixed(1)}`;
     }
 
     whitePortion.style.height = `${percentage}%`;
     evalText.textContent = displayText;
-    evalText.style.color = percentage > 50 ? '#333' : '#f0f0f0';
+    evalText.style.color = percentage > 50 ? '#333' : '#ccc';
   }
 
   private updateHangingPieceHighlights(): void {
     // Remove old highlights
     document.querySelectorAll('.cta-hanging-highlight').forEach(el => el.remove());
 
-    // Add new highlights
+    if (!this.settings?.hangingPieceDetection?.enabled) return;
+
     for (const hp of this.hangingPieces) {
       const squareEl = document.querySelector(`[class*="${hp.square}"]`);
       if (!squareEl) continue;
 
       const highlight = document.createElement('div');
-      highlight.className = 'cta-hanging-highlight';
+      highlight.className = `cta-hanging-highlight ${hp.threatLevel}`;
 
-      const colors: Record<string, string> = {
-        low: 'rgba(59, 130, 246, 0.3)',
-        medium: 'rgba(245, 158, 11, 0.4)',
-        high: 'rgba(239, 68, 68, 0.4)',
-        critical: 'rgba(220, 38, 38, 0.6)',
-      };
-
+      const rect = squareEl.getBoundingClientRect();
       highlight.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: ${colors[hp.threatLevel]};
-        border: 2px solid ${hp.isHanging ? '#ef4444' : '#f59e0b'};
-        border-radius: 2px;
+        position: fixed;
+        left: ${rect.left}px;
+        top: ${rect.top}px;
+        width: ${rect.width}px;
+        height: ${rect.height}px;
         pointer-events: auto;
         cursor: pointer;
+        border-radius: 2px;
         box-sizing: border-box;
       `;
 
       highlight.title = hp.description;
-
-      // Position relative to the square
-      const rect = squareEl.getBoundingClientRect();
-      highlight.style.position = 'fixed';
-      highlight.style.left = `${rect.left}px`;
-      highlight.style.top = `${rect.top}px`;
-      highlight.style.width = `${rect.width}px`;
-      highlight.style.height = `${rect.height}px`;
-
       this.overlayContainer?.appendChild(highlight);
     }
-  }
-
-  private updateOpeningDisplay(opening: any): void {
-    // Update opening display in the side panel
-    chrome.runtime.sendMessage({
-      type: 'POSITION_UPDATE',
-      payload: { opening },
-    });
-  }
-
-  private updateOpponentDisplay(stats: any): void {
-    chrome.runtime.sendMessage({
-      type: 'POSITION_UPDATE',
-      payload: { opponentStats: stats },
-    });
   }
 
   private clearHighlights(): void {
     document.querySelectorAll('.cta-hanging-highlight').forEach(el => el.remove());
   }
 
+  private sendToBackground(message: ExtensionMessage): void {
+    try {
+      chrome.runtime.sendMessage(message).catch(() => {});
+    } catch {
+      // Extension context might be invalidated
+    }
+  }
+
   destroy(): void {
     this.boardAdapter.stopObserving();
+    if (this.analysisDebounce) clearTimeout(this.analysisDebounce);
     this.overlayContainer?.remove();
   }
 }

@@ -1,34 +1,32 @@
-/* Content script styles for Chess Training Assistant */
+/* Chess Training Assistant - Content Script Styles */
 
-/* Evaluation bar */
+/* Evaluation Bar */
 #cta-eval-bar {
-  position: absolute;
-  right: -35px;
-  top: 0;
-  width: 28px;
-  height: 100%;
+  position: fixed;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 300px;
   background: #302e2b;
   border-radius: 4px;
   overflow: hidden;
   pointer-events: auto;
   display: flex;
   flex-direction: column-reverse;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  z-index: 100000;
+  transition: opacity 0.3s;
+}
+
+#cta-eval-bar:hover {
+  opacity: 0.9;
 }
 
 #cta-eval-white {
   width: 100%;
-  height: 50%;
   background: #eeeed2;
   transition: height 0.3s ease;
-}
-
-#cta-eval-black {
-  width: 100%;
-  flex: 1;
-  background: #302e2b;
-  transition: all 0.3s ease;
 }
 
 #cta-eval-text {
@@ -38,54 +36,52 @@
   transform: translate(-50%, -50%);
   font-size: 10px;
   font-weight: 700;
-  font-family: monospace;
+  font-family: 'SF Mono', 'Consolas', monospace;
   white-space: nowrap;
   z-index: 1;
-  text-shadow: 0 0 3px rgba(0,0,0,0.5);
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
 }
 
-/* Hanging piece highlights */
+/* Hanging Piece Highlights */
 .cta-hanging-highlight {
-  position: absolute;
-  border-radius: 2px;
-  pointer-events: auto;
-  cursor: pointer;
-  box-sizing: border-box;
-  transition: opacity 0.2s;
+  border: 2px solid;
+  border-radius: 3px;
+  transition: all 0.2s ease;
   z-index: 50;
 }
 
 .cta-hanging-highlight:hover {
-  opacity: 0.8;
+  transform: scale(1.05);
+  z-index: 51;
 }
 
 .cta-hanging-highlight.critical {
-  background: rgba(220, 38, 38, 0.4);
-  border: 2px solid #ef4444;
-  animation: cta-pulse 1.5s infinite;
+  background: rgba(248, 81, 73, 0.25);
+  border-color: #f85149;
+  animation: cta-pulse-critical 2s infinite;
 }
 
 .cta-hanging-highlight.high {
-  background: rgba(239, 68, 68, 0.3);
-  border: 2px solid #f87171;
+  background: rgba(219, 109, 40, 0.2);
+  border-color: #db6d28;
 }
 
 .cta-hanging-highlight.medium {
-  background: rgba(245, 158, 11, 0.3);
-  border: 2px solid #f59e0b;
+  background: rgba(210, 153, 34, 0.2);
+  border-color: #d29922;
 }
 
 .cta-hanging-highlight.low {
-  background: rgba(59, 130, 246, 0.2);
-  border: 2px solid #3b82f6;
+  background: rgba(88, 166, 255, 0.15);
+  border-color: #58a6ff;
 }
 
-@keyframes cta-pulse {
+@keyframes cta-pulse-critical {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
 }
 
-/* Move arrow overlay */
+/* Move Arrow Overlay */
 .cta-move-arrow {
   position: absolute;
   pointer-events: none;
@@ -97,44 +93,53 @@
   height: 100%;
 }
 
-/* Opening book indicator */
+/* Opening Book Indicator */
 .cta-opening-indicator {
   position: absolute;
   bottom: -24px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(74, 222, 128, 0.9);
-  color: #1a1a2e;
+  background: rgba(63, 185, 80, 0.9);
+  color: #fff;
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 10px;
   font-weight: 600;
   white-space: nowrap;
   pointer-events: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-/* Tooltip for hanging pieces */
+/* Tooltip */
 .cta-tooltip {
   position: fixed;
-  background: #1e293b;
-  color: #e2e8f0;
+  background: #161b22;
+  color: #e6edf3;
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 12px;
-  max-width: 250px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-  z-index: 100000;
+  max-width: 280px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 100001;
   pointer-events: none;
-  border: 1px solid #334155;
+  border: 1px solid #30363d;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .cta-tooltip .tooltip-title {
   font-weight: 600;
-  color: #4ade80;
+  color: #3fb950;
   margin-bottom: 4px;
+  font-size: 13px;
 }
 
 .cta-tooltip .tooltip-detail {
-  color: #94a3b8;
+  color: #9198a1;
   font-size: 11px;
+  line-height: 1.4;
+}
+
+/* Hide on non-chess pages */
+body:not([class*="chess"]) #chess-training-overlay {
+  display: none;
 }
