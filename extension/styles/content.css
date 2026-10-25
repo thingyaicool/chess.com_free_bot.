@@ -1,0 +1,140 @@
+/* Content script styles for Chess Training Assistant */
+
+/* Evaluation bar */
+#cta-eval-bar {
+  position: absolute;
+  right: -35px;
+  top: 0;
+  width: 28px;
+  height: 100%;
+  background: #302e2b;
+  border-radius: 4px;
+  overflow: hidden;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column-reverse;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  z-index: 100;
+}
+
+#cta-eval-white {
+  width: 100%;
+  height: 50%;
+  background: #eeeed2;
+  transition: height 0.3s ease;
+}
+
+#cta-eval-black {
+  width: 100%;
+  flex: 1;
+  background: #302e2b;
+  transition: all 0.3s ease;
+}
+
+#cta-eval-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 10px;
+  font-weight: 700;
+  font-family: monospace;
+  white-space: nowrap;
+  z-index: 1;
+  text-shadow: 0 0 3px rgba(0,0,0,0.5);
+}
+
+/* Hanging piece highlights */
+.cta-hanging-highlight {
+  position: absolute;
+  border-radius: 2px;
+  pointer-events: auto;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: opacity 0.2s;
+  z-index: 50;
+}
+
+.cta-hanging-highlight:hover {
+  opacity: 0.8;
+}
+
+.cta-hanging-highlight.critical {
+  background: rgba(220, 38, 38, 0.4);
+  border: 2px solid #ef4444;
+  animation: cta-pulse 1.5s infinite;
+}
+
+.cta-hanging-highlight.high {
+  background: rgba(239, 68, 68, 0.3);
+  border: 2px solid #f87171;
+}
+
+.cta-hanging-highlight.medium {
+  background: rgba(245, 158, 11, 0.3);
+  border: 2px solid #f59e0b;
+}
+
+.cta-hanging-highlight.low {
+  background: rgba(59, 130, 246, 0.2);
+  border: 2px solid #3b82f6;
+}
+
+@keyframes cta-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Move arrow overlay */
+.cta-move-arrow {
+  position: absolute;
+  pointer-events: none;
+  z-index: 45;
+}
+
+.cta-move-arrow svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Opening book indicator */
+.cta-opening-indicator {
+  position: absolute;
+  bottom: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(74, 222, 128, 0.9);
+  color: #1a1a2e;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Tooltip for hanging pieces */
+.cta-tooltip {
+  position: fixed;
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  max-width: 250px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  z-index: 100000;
+  pointer-events: none;
+  border: 1px solid #334155;
+}
+
+.cta-tooltip .tooltip-title {
+  font-weight: 600;
+  color: #4ade80;
+  margin-bottom: 4px;
+}
+
+.cta-tooltip .tooltip-detail {
+  color: #94a3b8;
+  font-size: 11px;
+}

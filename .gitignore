@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+extension/node_modules/
+
+# Build output
+dist/
+extension/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Test coverage
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+tmp/
+temp/
+
+# Stockfish binaries (too large for GitHub)
+extension/engine/*.wasm
+extension/engine/*.js
+!extension/engine/README.md
+
+# Generated icons (use source SVGs instead)
+extension/icons/*.png
+!extension/icons/README.md
+.next/
+build/

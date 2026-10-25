@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chess Training Assistant - Side Panel</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      padding: 16px;
+    }
+    h2 { font-size: 14px; color: #4ade80; margin-bottom: 8px; }
+    .panel {
+      background: #16213e;
+      border: 1px solid #2a2a4a;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .panel-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #4ade80;
+      margin-bottom: 8px;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid #2a2a4a;
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-label { color: #888; }
+    .stat-value { color: #fff; font-weight: 500; }
+    .opening-name {
+      font-size: 14px;
+      color: #fff;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .opening-moves {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .opening-move {
+      padding: 2px 6px;
+      background: #2a2a4a;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #ccc;
+    }
+    .opening-move.main { background: #4ade80; color: #1a1a2e; font-weight: 600; }
+    #session-dashboard {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .dashboard-card {
+      background: #2a2a4a;
+      border-radius: 6px;
+      padding: 8px;
+      text-align: center;
+    }
+    .dashboard-value { font-size: 18px; font-weight: bold; color: #fff; }
+    .dashboard-label { font-size: 10px; color: #888; margin-top: 2px; }
+    .hanging-piece {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px;
+      background: #2a2a4a;
+      border-radius: 4px;
+      margin-bottom: 4px;
+    }
+    .hanging-piece .piece-icon { font-size: 20px; }
+    .hanging-piece .piece-info { flex: 1; }
+    .hanging-piece .piece-name { font-size: 12px; color: #fff; }
+    .hanging-piece .piece-desc { font-size: 10px; color: #888; }
+    .threat-high { border-left: 3px solid #ef4444; }
+    .threat-medium { border-left: 3px solid #f59e0b; }
+    .threat-low { border-left: 3px solid #3b82f6; }
+    .empty-state {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <div class="panel-title">Current Analysis</div>
+    <div class="stat-row">
+      <span class="stat-label">Evaluation</span>
+      <span class="stat-value" id="sp-eval">+0.00</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Best Move</span>
+      <span class="stat-value" id="sp-bestmove">--</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Depth</span>
+      <span class="stat-value" id="sp-depth">--</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Selected Move</span>
+      <span class="stat-value" id="sp-selected">--</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Opening</div>
+    <div class="opening-name" id="sp-opening-name">Starting Position</div>
+    <div class="opening-moves" id="sp-opening-moves">
+      <span class="opening-move main">e4</span>
+      <span class="opening-move">d4</span>
+      <span class="opening-move">Nf3</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Hanging Pieces</div>
+    <div id="sp-hanging-pieces">
+      <div class="empty-state">No hanging pieces detected</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Opponent</div>
+    <div id="sp-opponent-stats">
+      <div class="empty-state">Waiting for opponent data...</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Session Dashboard</div>
+    <div id="session-dashboard">
+      <div class="dashboard-card">
+        <div class="dashboard-value" id="sp-accuracy">--</div>
+        <div class="dashboard-label">Accuracy</div>
+      </div>
+      <div class="dashboard-card">
+        <div class="dashboard-value" id="sp-moves">0</div>
+        <div class="dashboard-label">Moves Played</div>
+      </div>
+      <div class="dashboard-card">
+        <div class="dashboard-value" id="sp-games">0</div>
+        <div class="dashboard-label">Games</div>
+      </div>
+      <div class="dashboard-card">
+        <div class="dashboard-value" id="sp-time">0:00</div>
+        <div class="dashboard-label">Session Time</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="dist/sidepanel.js"></script>
+</body>
+</html>
