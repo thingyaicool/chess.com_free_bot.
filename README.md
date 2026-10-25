@@ -1,6 +1,6 @@
 # Chess Training Assistant
 
-A comprehensive Chrome extension for chess analysis and training, powered by the Stockfish engine running locally in your browser.
+A comprehensive Chrome extension for chess analysis and training, powered by the Stockfish engine running locally in your browser. Designed with a polished dark interface and human-like play randomization.
 
 > **⚠️ Disclaimer:** This extension is built for **educational and training purposes**. Using engine assistance during games on chess.com or similar platforms violates their Terms of Service and may result in account bans. Use responsibly.
 
@@ -8,85 +8,78 @@ A comprehensive Chrome extension for chess analysis and training, powered by the
 
 ### 🧠 Stockfish Engine Integration
 - Real Stockfish engine running as WebAssembly in a Web Worker
-- No API keys, no servers, no external services
-- Configurable analysis depth (1-30) and thinking time
+- No API keys, no servers, no external services required
+- Configurable **Think Time** (0.5s – 30s) and **Depth** (1 – 30)
 - Multi-PV analysis showing top candidate moves
-- Full UCI protocol support
+- Full UCI protocol support with progress updates
 
 ### 📊 Evaluation Bar
 - Real-time evaluation display in centipawns (+0.65, -1.20)
 - Mate distance indicators (M5, M3, etc.)
-- Visual bar showing which side is winning
-- Smooth animated transitions
-- Configurable orientation (vertical/horizontal)
+- Visual bar with smooth animated transitions
+- Sigmoid mapping for natural visual representation
 
 ### 🎯 Automatic Move Selection
 - **Top N Candidates:** Choose from 1 to 20 best moves
 - **Deterministic Mode:** Always plays the engine's best move
-- **Weighted Mode:** Favors stronger moves with probabilistic selection
-- Duplicate prevention and illegal move filtering
-- Handles promotions, castling, and en passant correctly
+- **Weighted Mode:** Probabilistic selection favoring stronger moves
+- Illegal move filtering, duplicate prevention
+- Handles promotions, castling, en passant correctly
 
 ### 📈 Play Strength (Elo-Based)
 - Target ratings from 400 to 3000+ Elo
 - Uses Stockfish's `UCI_LimitStrength` and `UCI_Elo` options
-- Depth and time limits adjusted per strength level
-- Presets: Beginner (400) → Grandmaster (2500) → Maximum
+- **Recommended presets** for each Elo level with descriptions
+- Depth and think time adjusted per strength level
 - Combines with candidate-move selection for varied play
+
+### 🎲 Advanced Randomization System (Anti-Detection)
+- **5 independent categories:** Opening, Timing, Delay, Moves, Accuracy
+- **Accuracy targeting:** Set target (e.g., 75%) with ±tolerance
+- **Session-adaptive:** Varies move quality to approach target over time
+- **Human-like timing:** Random variation in think times (±15-30%)
+- **Seeded PRNG** (Mulberry32) for reproducible testing
+- **Presets:** Casual (60%), Balanced ★ (75%), Strong (85%), Masterful (93%)
+- **Session dashboard:** Target vs. observed accuracy, distribution, trends
 
 ### 🔍 Hanging Piece Detection
 - Identifies vulnerable pieces for both colors
 - Distinguishes between truly hanging and tactically defended pieces
 - Color-coded threat levels (low/medium/high/critical)
 - Click markers for detailed explanations
-- Shows attackers, defenders, and material at risk
 
 ### 👤 Opponent Statistics
 - Fetches public stats from Chess.com's API
 - Shows ratings (bullet, blitz, rapid, daily)
-- Win/loss/draw records
+- Win/loss/draw records, total games
 - 5-minute cache to avoid rate limits
-- Manual refresh and last-updated timestamp
 
 ### 🤖 Automatic Move Execution
 - Start/Pause/Stop controls
 - Configurable playing side
 - Pre-move display before execution
 - Status indicators (Analyzing, Ready, Paused, Error)
-- Safe recovery from interrupted actions
 
 ### 🔄 Auto Next Game
 - Automatically starts new games after the current one ends
-- Configurable delay before starting
-- Session limits (max games, max duration)
+- Configurable delay, session limits
 - Pause on error option
-- Optional confirmation requirement
 
 ### ⏱️ Move Timing & Natural Pacing
 - Configurable min/max move times (decimal seconds)
 - Variation percentage for natural feel
-- Complexity-based adjustment (more time for harder positions)
-- Additional configurable delay
-- No blocking delays — fully async scheduling
-
-### 🎲 Advanced Randomization System
-- **Multi-select categories:** Opening, Timing, Delay, Moves, Accuracy
-- **Accuracy targeting:** Set target (e.g., 80%) with ±tolerance
-- **Session-adaptive:** Varies move quality to approach target over time
-- **Seeded PRNG:** Reproducible results for testing
-- **Presets:** Consistent, Balanced, Variable Practice, Custom
-- **Session dashboard:** Target vs. observed accuracy, distribution, trends
+- Complexity-based adjustment
+- Human-like timing variation to avoid detection patterns
 
 ### 📖 Opening Book Recommendations
 - Built-in opening book with common positions
 - Shows recommended moves with frequency data
 - Opening name identification
 - Configurable depth (1-10 moves)
-- Distinguishes book moves from engine analysis
 
 ## Requirements
 
-- Chrome 88+ or Chromium-based browser (Edge, Brave, Opera)
+- Chrome 100+ or Chromium-based browser (Edge, Brave, Opera)
 - Modern computer with WebAssembly support
 - ~50MB free disk space for Stockfish WASM
 
@@ -107,122 +100,143 @@ npm install
 
 ### 3. Download Stockfish WASM
 
-The extension requires a Stockfish WebAssembly build. Download it and place it in the `extension/engine/` directory:
+The extension requires Stockfish WebAssembly files. Place them in `extension/engine/`:
 
 ```bash
 # Option A: From npm
 npm install stockfish
-cp node_modules/stockfish/src/engine/* extension/engine/
+mkdir -p extension/engine
+cp node_modules/stockfish/src/engine/stockfish.js extension/engine/
+cp node_modules/stockfish/src/engine/stockfish.wasm extension/engine/
+cp node_modules/stockfish/src/engine/stockfish.worker.js extension/engine/
 
-# Option B: From CDN (manual download)
-# Download from: https://cdn.jsdelivr.net/npm/stockfish/src/engine/
-# Place stockfish.js, stockfish.wasm, and stockfish.worker.js in extension/engine/
+# Option B: Manual download from CDN
+# https://cdn.jsdelivr.net/npm/stockfish/src/engine/
+# Download: stockfish.js, stockfish.wasm, stockfish.worker.js
 ```
 
-### 4. Build the Extension
+### 4. Generate Icons
+
+```bash
+node scripts/generate-icons.js
+```
+
+### 5. Build the Extension
 
 ```bash
 npm run build:extension
 ```
 
-This compiles TypeScript and bundles the extension into `extension/dist/`.
+This compiles TypeScript and bundles all entry points into `extension/dist/`.
 
-### 5. Load in Chrome
+### 6. Load in Chrome
 
-1. Open Chrome and navigate to `chrome://extensions/`
+1. Open `chrome://extensions/`
 2. Enable **Developer mode** (toggle in top-right)
 3. Click **Load unpacked**
 4. Select the `extension/` directory
-5. The extension icon should appear in your toolbar
+5. The extension icon appears in your toolbar
+
+## Build Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start website development server |
+| `npm run build` | Build the documentation website |
+| `npm run build:extension` | Build the Chrome extension |
+| `npm run typecheck` | Type-check the website code |
+| `npm run typecheck:extension` | Type-check the extension code |
+| `npm test` | Run unit tests |
 
 ## Configuration
 
 ### Engine Settings
-- **Depth:** Analysis search depth (1-30). Higher = stronger but slower.
-- **MultiPV:** Number of candidate lines to calculate.
-- **Elo:** Playing strength target. Set to "Maximum" for full strength.
-- **Threads:** CPU threads for analysis (1 recommended for extensions).
-- **Hash:** Memory allocation in MB.
+- **Think Time:** Seconds to analyze per move (0.5 – 30s). Recommended: 3s
+- **Depth:** Search depth (1 – 30). Recommended: 15
+- **Analysis Mode:** Choose between Think Time or Fixed Depth
 
-### Play Strength
-- Select from presets (400-2500) or set custom Elo
-- Lower Elo = shallower search + less thinking time
-- Combines with candidate-move selection
-- "Maximum" removes all limits
+### Play Strength (Recommended Presets)
+| Elo | Depth | Think Time | Accuracy | Description |
+|-----|-------|------------|----------|-------------|
+| 400 | 2 | 0.5s | 35% | Very Beginner |
+| 800 | 4 | 1.5s | 55% | Beginner |
+| 1200 | 6 | 2.5s | 68% | Intermediate |
+| 1600 ★ | 10 | 3.5s | 78% | Club Player |
+| 2000 | 14 | 5.0s | 86% | Advanced |
+| 2500 | 18 | 8.0s | 95% | Grandmaster |
 
-### Candidate Move Selection
-- **Top 1:** Always plays the best move found
-- **Top 2-20:** Selects from the N best candidates
-- **Deterministic:** Always picks the highest-ranked move
-- **Weighted:** Probabilistic selection favoring stronger moves
+### Accuracy Presets
+| Preset | Target | Tolerance | Description |
+|--------|--------|-----------|-------------|
+| Casual | 60% | ±10% | Lots of variety, occasional blunders |
+| Balanced ★ | 75% | ±7% | Natural human-like play |
+| Strong | 85% | ±5% | Mostly accurate with rare mistakes |
+| Masterful | 93% | ±3% | Very precise, few errors |
 
-### Move Timing
-- **Min Time:** Minimum seconds before making a move
-- **Max Time:** Maximum seconds for analysis
-- **Variation:** Random variation percentage
-- **Complexity Adjustment:** More time for tactical positions
-
-### Randomization
-- Enable individual categories independently
-- Set target accuracy with tolerance range
-- Choose presets or customize each parameter
-- Use seed for reproducible sessions
+### Human-Like Play (Anti-Detection)
+- **Timing Variation:** ±15-30% random variation in think times
+- **Move Selection:** Weighted random from top N candidates
+- **Accuracy Adaptation:** Session tracks actual vs. target accuracy
+- **Opening Variation:** Selects from multiple book moves
+- **Delay Variation:** Independent delay randomization
 
 ## Architecture
 
 ```
 extension/
 ├── manifest.json              # Chrome Extension Manifest V3
-├── popup.html                 # Toolbar popup UI
-├── sidepanel.html             # Side panel UI
+├── popup.html                 # Toolbar popup (compact controls)
+├── sidepanel.html             # Side panel (full workspace)
+├── dist/                      # Built JS bundles (generated)
+│   ├── background.js
+│   ├── content.js
+│   ├── popup.js
+│   └── sidepanel.js
 ├── src/
-│   ├── background.ts          # Service worker (engine lifecycle)
-│   ├── content.ts             # Content script (board interaction)
+│   ├── background.ts          # Service worker
+│   ├── content.ts             # Content script
 │   ├── popup.ts               # Popup logic
 │   ├── sidepanel.ts           # Side panel logic
-│   ├── types.ts               # TypeScript type definitions
+│   ├── types.ts               # TypeScript definitions
 │   └── services/
-│       ├── EngineManager.ts   # Stockfish WASM communication
-│       ├── BoardAdapter.ts    # chess.com DOM interface
-│       ├── MoveSelector.ts    # Candidate move selection
-│       ├── StrengthController.ts  # Elo-based strength
-│       ├── TimingController.ts    # Move timing logic
+│       ├── EngineManager.ts       # Stockfish WASM wrapper
+│       ├── BoardAdapter.ts        # chess.com DOM interface
+│       ├── MoveSelector.ts        # Candidate selection
+│       ├── StrengthController.ts  # Elo management
+│       ├── TimingController.ts    # Move timing
 │       ├── HangingPieceDetector.ts # Vulnerability detection
-│       ├── OpponentStatsService.ts # Chess.com API integration
-│       ├── OpeningBookService.ts   # Opening book lookup
-│       ├── RandomizationEngine.ts  # Human-like play system
-│       ├── AutoGameController.ts   # Auto next-game logic
+│       ├── OpponentStatsService.ts # Chess.com API
+│       ├── OpeningBookService.ts   # Opening book
+│       ├── RandomizationEngine.ts  # Human-like play
+│       ├── AutoGameController.ts   # Auto next-game
 │       └── SettingsStore.ts        # Persistent settings
-├── engine/                    # Stockfish WASM files (user-provided)
+├── engine/                    # Stockfish WASM (user-provided)
 ├── styles/
 │   └── content.css            # Overlay styles
-└── icons/                     # Extension icons
+└── icons/                     # Extension icons (generated)
 ```
 
 ## Troubleshooting
 
 ### Engine Not Loading
-- Ensure Stockfish WASM files are in `extension/engine/`
-- Check the console for WebAssembly errors
-- Verify your browser supports WASM (all modern browsers do)
-- Try reloading the extension in `chrome://extensions/`
+- Verify `stockfish.js`, `stockfish.wasm`, `stockfish.worker.js` are in `extension/engine/`
+- Check browser console for WebAssembly errors
+- Ensure Content Security Policy allows `wasm-unsafe-eval`
+- Reload the extension in `chrome://extensions/`
 
 ### Board Not Detected
-- The extension supports chess.com's current board structure
-- If chess.com updates their DOM, the adapter may need updating
-- Check the console for `[BoardAdapter]` messages
+- Ensure you are on a chess.com game page
+- Check console for `[CTA]` messages
+- The DOM structure may have changed — update selectors in `BoardAdapter.ts`
 
-### Opponent Stats Not Loading
-- Chess.com's API may rate-limit requests
-- Stats are cached for 5 minutes
-- Private profiles may not expose all data
-- Check the console for network errors
+### Extension Won't Build
+- Run `npm install` to ensure all dependencies are present
+- Run `npm run typecheck:extension` to check for TypeScript errors
+- Ensure Node.js 18+ is installed
 
-### Moves Not Executing
-- Auto-play requires the board to be in a supported state
-- Ensure it's your turn to move
-- Check that the extension has `activeTab` permission
-- Some game modes may not support automated interaction
+### Icons Missing
+- Run `node scripts/generate-icons.js` to generate PNG icons
+- Icons are placed in `extension/icons/`
 
 ## Known Limitations
 
@@ -239,18 +253,21 @@ extension/
 # Run unit tests
 npm test
 
-# Run with coverage
-npm run test:coverage
+# Type-check extension
+npm run typecheck:extension
 
-# Type checking
-npm run typecheck
+# Build website
+npm run build
+
+# Build extension
+npm run build:extension
 ```
 
 ## Third-Party Assets & Licenses
 
-- **Stockfish** — GPL-3.0 license. The world's strongest open-source chess engine.
-- **chess.js** — BSD-2-Clause license. Chess move generation and validation.
-- **Chess.com Public API** — Used for opponent statistics. See [Chess.com API docs](https://www.chess.com/news/view/published-data-api).
+- **Stockfish** — GPL-3.0. The world's strongest open-source chess engine.
+- **chess.js** — BSD-2-Clause. Chess move generation and validation.
+- **Chess.com Public API** — Used for opponent statistics.
 
 ## License
 

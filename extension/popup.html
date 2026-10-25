@@ -5,180 +5,331 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chess Training Assistant</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      width: 380px;
-      min-height: 500px;
-      background: #1a1a2e;
-      color: #e0e0e0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: 13px;
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #1c2128;
+      --bg-hover: #21262d;
+      --border: #30363d;
+      --border-light: #3d444d;
+      --text-primary: #e6edf3;
+      --text-secondary: #9198a1;
+      --text-muted: #6e7681;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --green: #3fb950;
+      --green-dim: #238636;
+      --red: #f85149;
+      --yellow: #d29922;
+      --orange: #db6d28;
+      --radius: 6px;
+      --radius-lg: 8px;
     }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 360px;
+      min-height: 420px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      font-size: 13px;
+      line-height: 1.4;
+      overflow-x: hidden;
+    }
+
+    /* Header */
     .header {
-      background: linear-gradient(135deg, #16213e, #0f3460);
-      padding: 12px 16px;
-      border-bottom: 1px solid #2a2a4a;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 14px;
       display: flex;
       align-items: center;
       gap: 10px;
     }
-    .header-icon { font-size: 24px; }
-    .header h1 { font-size: 15px; font-weight: 600; color: #fff; }
-    .header p { font-size: 11px; color: #888; }
-    .section {
-      padding: 12px 16px;
-      border-bottom: 1px solid #2a2a4a;
+    .header-icon {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--green), #1a7f37);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
     }
-    .section-title {
+    .header-text h1 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.2px;
+    }
+    .header-text p {
       font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Status bar */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .status-dot.ready { background: var(--green); box-shadow: 0 0 4px var(--green); }
+    .status-dot.analyzing { background: var(--yellow); animation: pulse 1.2s infinite; }
+    .status-dot.error { background: var(--red); }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .status-text { color: var(--text-secondary); }
+    .eval-badge {
+      margin-left: auto;
+      padding: 2px 8px;
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: 'SF Mono', 'Consolas', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* Sections */
+    .section {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section:last-child { border-bottom: none; }
+    .section-title {
+      font-size: 10px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #4ade80;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
       margin-bottom: 8px;
       font-weight: 600;
     }
+
+    /* Controls */
     .control-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
-    .control-label { font-size: 12px; color: #ccc; }
-    .control-value {
-      background: #2a2a4a;
-      padding: 4px 8px;
-      border-radius: 4px;
+    .control-row:last-child { margin-bottom: 0; }
+    .control-label {
       font-size: 12px;
-      color: #fff;
-      min-width: 60px;
-      text-align: center;
+      color: var(--text-secondary);
     }
-    select, input[type="number"], input[type="range"] {
-      background: #2a2a4a;
-      border: 1px solid #3a3a5a;
-      color: #fff;
+    .control-label .recommended {
+      color: var(--green);
+      font-size: 10px;
+      margin-left: 4px;
+    }
+
+    select, input[type="number"] {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
       padding: 4px 8px;
-      border-radius: 4px;
+      border-radius: var(--radius);
       font-size: 12px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
     }
-    select { min-width: 100px; }
+    select:focus, input[type="number"]:focus {
+      border-color: var(--accent);
+    }
+    select { min-width: 100px; cursor: pointer; }
+    input[type="number"] { width: 64px; text-align: right; }
+
+    /* Toggle */
     .toggle {
       position: relative;
-      width: 36px;
-      height: 20px;
-      background: #3a3a5a;
-      border-radius: 10px;
+      width: 32px;
+      height: 18px;
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-radius: 9px;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.2s;
+      flex-shrink: 0;
     }
-    .toggle.active { background: #4ade80; }
+    .toggle.active {
+      background: var(--green-dim);
+      border-color: var(--green);
+    }
     .toggle::after {
       content: '';
       position: absolute;
       top: 2px;
       left: 2px;
-      width: 16px;
-      height: 16px;
-      background: #fff;
+      width: 12px;
+      height: 12px;
+      background: var(--text-secondary);
       border-radius: 50%;
-      transition: transform 0.2s;
-    }
-    .toggle.active::after { transform: translateX(16px); }
-    .btn {
-      padding: 6px 12px;
-      border-radius: 6px;
-      border: none;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
       transition: all 0.2s;
     }
-    .btn-primary { background: #4ade80; color: #1a1a2e; }
-    .btn-primary:hover { background: #22c55e; }
-    .btn-secondary { background: #2a2a4a; color: #e0e0e0; border: 1px solid #3a3a5a; }
-    .btn-secondary:hover { background: #3a3a5a; }
-    .btn-danger { background: #ef4444; color: #fff; }
-    .btn-danger:hover { background: #dc2626; }
-    .status-bar {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
-      background: #2a2a4a;
-      border-radius: 6px;
-      margin-bottom: 8px;
+    .toggle.active::after {
+      transform: translateX(14px);
+      background: var(--green);
     }
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #666;
+
+    /* Buttons */
+    .btn {
+      padding: 5px 10px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
     }
-    .status-dot.ready { background: #4ade80; }
-    .status-dot.analyzing { background: #f59e0b; animation: pulse 1s infinite; }
-    .status-dot.error { background: #ef4444; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-    .eval-display {
-      text-align: center;
-      padding: 8px;
-      background: #2a2a4a;
-      border-radius: 6px;
-      margin-bottom: 8px;
+    .btn-primary {
+      background: var(--green-dim);
+      border-color: var(--green);
+      color: #fff;
     }
-    .eval-value { font-size: 20px; font-weight: bold; color: #fff; }
-    .eval-label { font-size: 10px; color: #888; margin-top: 2px; }
+    .btn-primary:hover { background: var(--green); }
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+    }
+    .btn-secondary:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .btn-danger {
+      background: transparent;
+      border-color: var(--red);
+      color: var(--red);
+    }
+    .btn-danger:hover { background: rgba(248, 81, 73, 0.1); }
+
     .button-row {
       display: flex;
       gap: 6px;
       margin-top: 8px;
     }
-    .button-row .btn { flex: 1; }
-    .accuracy-bar {
-      height: 6px;
-      background: #2a2a4a;
-      border-radius: 3px;
-      overflow: hidden;
-      margin-top: 4px;
-    }
-    .accuracy-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #4ade80, #22c55e);
-      border-radius: 3px;
-      transition: width 0.3s;
+    .button-row .btn { flex: 1; text-align: center; }
+
+    /* Presets */
+    .preset-row {
+      display: flex;
+      gap: 4px;
+      margin-top: 6px;
     }
     .preset-btn {
-      padding: 4px 8px;
+      padding: 3px 8px;
       border-radius: 4px;
-      border: 1px solid #3a3a5a;
+      border: 1px solid var(--border);
       background: transparent;
-      color: #ccc;
-      font-size: 11px;
+      color: var(--text-muted);
+      font-size: 10px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
+      font-family: inherit;
     }
-    .preset-btn.active { background: #4ade80; color: #1a1a2e; border-color: #4ade80; }
-    .preset-btn:hover { border-color: #4ade80; }
+    .preset-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .preset-btn:hover:not(.active) {
+      border-color: var(--accent);
+      color: var(--text-secondary);
+    }
+
+    /* Range slider */
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid var(--bg-primary);
+    }
+
+    /* Footer */
+    .footer {
+      padding: 8px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .footer-link {
+      font-size: 11px;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .footer-link:hover { color: var(--accent-hover); text-decoration: underline; }
+
+    /* Info box */
+    .info-box {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 10px;
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .info-box strong { color: var(--text-secondary); }
   </style>
 </head>
 <body>
   <div class="header">
-    <span class="header-icon">♟️</span>
-    <div>
+    <div class="header-icon">♞</div>
+    <div class="header-text">
       <h1>Chess Training Assistant</h1>
       <p>Stockfish-powered analysis</p>
     </div>
   </div>
 
-  <!-- Engine Status -->
+  <!-- Status -->
+  <div class="status-bar">
+    <div class="status-dot ready" id="engine-status-dot"></div>
+    <span class="status-text" id="engine-status-text">Initializing...</span>
+    <span class="eval-badge" id="eval-badge">+0.00</span>
+  </div>
+
+  <!-- Engine Settings -->
   <div class="section">
-    <div class="section-title">Engine Status</div>
-    <div class="status-bar">
-      <div class="status-dot ready" id="engine-status-dot"></div>
-      <span id="engine-status-text">Ready</span>
+    <div class="section-title">Engine</div>
+    <div class="control-row">
+      <span class="control-label">Think Time <span class="recommended">★ 3s</span></span>
+      <input type="number" id="think-time" value="3" min="0.5" max="30" step="0.5">
     </div>
-    <div class="eval-display">
-      <div class="eval-value" id="eval-value">+0.00</div>
-      <div class="eval-label" id="eval-label">Depth: -- | Nodes: --</div>
+    <div class="control-row">
+      <span class="control-label">Depth <span class="recommended">★ 15</span></span>
+      <input type="number" id="depth" value="15" min="1" max="30" step="1">
+    </div>
+    <div class="control-row">
+      <span class="control-label">Analysis Mode</span>
+      <select id="analysis-mode">
+        <option value="thinktime" selected>Think Time</option>
+        <option value="depth">Fixed Depth</option>
+      </select>
     </div>
   </div>
 
@@ -186,60 +337,37 @@
   <div class="section">
     <div class="section-title">Play Strength</div>
     <div class="control-row">
-      <span class="control-label">Target Elo</span>
+      <span class="control-label">Target Elo <span class="recommended">★ 1600</span></span>
       <select id="elo-select">
-        <option value="max">Maximum (3000+)</option>
-        <option value="2500">2500 - GM</option>
-        <option value="2200">2200 - Expert</option>
-        <option value="2000" selected>2000 - Advanced</option>
-        <option value="1800">1800 - Strong Club</option>
-        <option value="1600">1600 - Club</option>
-        <option value="1400">1400 - Intermediate</option>
-        <option value="1200">1200 - Casual</option>
-        <option value="1000">1000 - Beginner</option>
-        <option value="800">800 - Novice</option>
-        <option value="400">400 - Very Beginner</option>
+        <option value="max">Maximum</option>
+        <option value="2500">2500 — GM</option>
+        <option value="2200">2200 — Expert</option>
+        <option value="2000">2000 — Advanced</option>
+        <option value="1800">1800 — Strong Club</option>
+        <option value="1600" selected>1600 — Club ★</option>
+        <option value="1400">1400 — Intermediate</option>
+        <option value="1200">1200 — Casual</option>
+        <option value="1000">1000 — Beginner</option>
+        <option value="800">800 — Novice</option>
+        <option value="400">400 — Very Beginner</option>
       </select>
     </div>
     <div class="control-row">
-      <span class="control-label">Candidates (Top N)</span>
+      <span class="control-label">Candidates</span>
       <select id="candidates-select">
-        <option value="1">Top 1 (Best move)</option>
+        <option value="1">Top 1 (Best)</option>
         <option value="2">Top 2</option>
         <option value="3" selected>Top 3 ★</option>
         <option value="5">Top 5</option>
         <option value="10">Top 10</option>
-        <option value="20">Top 20</option>
       </select>
     </div>
-    <div class="control-row">
-      <span class="control-label">Selection Mode</span>
-      <select id="selection-mode">
-        <option value="deterministic">Deterministic (Best)</option>
-        <option value="weighted" selected>Weighted ★</option>
-      </select>
+    <div class="info-box" id="elo-info">
+      <strong>Club Player</strong> — solid fundamentals, good tactical vision
     </div>
   </div>
 
-  <!-- Timing -->
-  <div class="section">
-    <div class="section-title">Move Timing</div>
-    <div class="control-row">
-      <span class="control-label">Min Time (s)</span>
-      <input type="number" id="min-time" value="1.0" min="0.1" max="30" step="0.1" style="width:60px">
-    </div>
-    <div class="control-row">
-      <span class="control-label">Max Time (s)</span>
-      <input type="number" id="max-time" value="6.0" min="0.5" max="60" step="0.1" style="width:60px">
-    </div>
-    <div class="control-row">
-      <span class="control-label">Variation (%)</span>
-      <input type="range" id="variation" min="0" max="100" value="20" style="width:100px">
-      <span id="variation-val" class="control-value">20%</span>
-    </div>
-  </div>
-
-  <!-- Randomization -->
+  <!-- Human-Like Play -->
   <div class="section">
     <div class="section-title">Human-Like Play</div>
     <div class="control-row">
@@ -247,14 +375,14 @@
       <div class="toggle" id="randomization-toggle"></div>
     </div>
     <div class="control-row">
-      <span class="control-label">Target Accuracy</span>
-      <input type="number" id="target-accuracy" value="80" min="30" max="100" step="1" style="width:60px">
-      <span style="color:#888">%</span>
+      <span class="control-label">Target Accuracy <span class="recommended">★ 75%</span></span>
+      <input type="number" id="target-accuracy" value="75" min="30" max="100" step="1">
     </div>
-    <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
-      <button class="preset-btn" data-preset="consistent">Consistent</button>
+    <div class="preset-row">
+      <button class="preset-btn" data-preset="casual">Casual</button>
       <button class="preset-btn active" data-preset="balanced">Balanced ★</button>
-      <button class="preset-btn" data-preset="variable">Variable</button>
+      <button class="preset-btn" data-preset="strong">Strong</button>
+      <button class="preset-btn" data-preset="masterful">Masterful</button>
     </div>
   </div>
 
@@ -276,25 +404,10 @@
     </div>
   </div>
 
-  <!-- Display Options -->
-  <div class="section">
-    <div class="section-title">Display</div>
-    <div class="control-row">
-      <span class="control-label">Eval Bar</span>
-      <div class="toggle active" id="toggle-evalbar"></div>
-    </div>
-    <div class="control-row">
-      <span class="control-label">Hanging Pieces</span>
-      <div class="toggle active" id="toggle-hanging"></div>
-    </div>
-    <div class="control-row">
-      <span class="control-label">Opening Book</span>
-      <div class="toggle active" id="toggle-opening"></div>
-    </div>
-    <div class="control-row">
-      <span class="control-label">Opponent Stats</span>
-      <div class="toggle active" id="toggle-stats"></div>
-    </div>
+  <!-- Footer -->
+  <div class="footer">
+    <span class="footer-link" id="open-sidepanel">Open Side Panel →</span>
+    <span class="footer-link" id="open-settings">Settings</span>
   </div>
 
   <script src="dist/popup.js"></script>

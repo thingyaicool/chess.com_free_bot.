@@ -1,5 +1,6 @@
 /**
  * OpponentStatsService - Fetches opponent statistics from Chess.com's public API.
+ * Includes caching to avoid rate limits.
  */
 
 import type { OpponentStats, RatingInfo } from '../types';
@@ -15,9 +16,6 @@ interface CacheEntry {
 export class OpponentStatsService {
   private cache: Map<string, CacheEntry> = new Map();
 
-  /**
-   * Get opponent statistics. Uses cache if available and fresh.
-   */
   async getStats(username: string, forceRefresh = false): Promise<OpponentStats> {
     // Check cache
     if (!forceRefresh) {
@@ -34,14 +32,14 @@ export class OpponentStatsService {
       ]);
 
       const result: OpponentStats = {
-        username: profile.username,
+        username: profile.username || username,
         avatar: profile.avatar,
         title: profile.title,
         ratings: {
-          bullet: stats.bullet,
-          blitz: stats.blitz,
-          rapid: stats.rapid,
-          daily: stats.daily,
+          bullet: this.parseRating(stats.chess_bullet),
+          blitz: this.parseRating(stats.chess_blitz),
+          rapid: this.parseRating(stats.chess_rapid),
+          daily: this.parseRating(stats.chess_daily),
         },
         stats: {
           totalGames: this.calculateTotalGames(stats),
@@ -54,9 +52,7 @@ export class OpponentStatsService {
         lastUpdated: Date.now(),
       };
 
-      // Cache the result
       this.cache.set(username.toLowerCase(), { data: result, timestamp: Date.now() });
-
       return result;
     } catch (error) {
       return {
@@ -70,17 +66,17 @@ export class OpponentStatsService {
   }
 
   private async fetchProfile(username: string): Promise<any> {
-    const response = await fetch(`${API_BASE}/player/${username}`);
+    const response = await fetch(`${API_BASE}/player/${encodeURIComponent(username)}`);
     if (!response.ok) {
-      throw new Error(`Failed to fetch profile: ${response.status}`);
+      throw new Error(`Profile fetch failed: ${response.status}`);
     }
     return response.json();
   }
 
   private async fetchStats(username: string): Promise<any> {
-    const response = await fetch(`${API_BASE}/player/${username}/stats`);
+    const response = await fetch(`${API_BASE}/player/${encodeURIComponent(username)}/stats`);
     if (!response.ok) {
-      throw new Error(`Failed to fetch stats: ${response.status}`);
+      throw new Error(`Stats fetch failed: ${response.status}`);
     }
     return response.json();
   }
@@ -143,10 +139,5 @@ export class OpponentStatsService {
 
   clearCache(): void {
     this.cache.clear();
-  }
-
-  getCachedTime(username: string): number | null {
-    const cached = this.cache.get(username.toLowerCase());
-    return cached ? cached.timestamp : null;
   }
 }
